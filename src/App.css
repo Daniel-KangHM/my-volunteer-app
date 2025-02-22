@@ -1,38 +1,403 @@
+/* 앱 전체 스타일 */
 .App {
   text-align: center;
+  padding: 20px;
+  font-family: Arial, sans-serif; /* 기본 폰트 설정 */
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* 홈 화면 이벤트 리스트 */
+.post-list {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+  max-width: 800px;
+  margin: 0 auto; /* 중앙 정렬 */
+}
+
+/* 이벤트 및 문의 카드 */
+.post-card {
+  border: 1px solid #e0e0e0;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
+  transition: transform 0.2s, box-shadow 0.2s; /* 호버 시 애니메이션 */
+}
+
+.post-card:hover {
+  transform: translateY(-5px); /* 위로 살짝 이동 */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.post-card h3 {
+  color: #333333;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.post-card p {
+  color: #666666;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+/* 카드 내 폼 스타일 */
+.post-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.post-card form div {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  gap: 10px;
+}
+
+.post-card form label {
+  font-weight: bold;
+  color: #444444;
+  min-width: 100px; /* 레이블 최소 너비 */
+  text-align: right;
+}
+
+.post-card input, .post-card select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  flex: 1; /* 남은 공간 채우기 */
+}
+
+.post-card button:hover {
+  opacity: 0.9;
+}
+
+.post-card button[type="submit"] {
+  background-color: #007bff; /* 기본 제출 버튼 색상 */
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+/* 관리자 폼 스타일 */
+.admin-form {
+  max-width: 500px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.admin-form div {
+  margin-bottom: 10px;
+}
+
+.admin-form label {
+  display: inline-block;
+  width: 100px;
+  text-align: right;
+  margin-right: 10px;
+}
+
+/* 관리자 대시보드 섹션 */
+.admin-section {
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  overflow: hidden; /* 접기 애니메이션 시 깔끔하게 */
+}
+
+.admin-add-event {
+  background-color: #f0f8ff; /* 연한 파랑 */
+  border: 1px solid #b0e0e6;
+}
+
+.admin-event-list {
+  background-color: #f5f5f5; /* 연한 회색 */
+  border: 1px solid #d3d3d3;
+}
+
+.admin-inquiry-list {
+  background-color: #fff0f5; /* 연한 분홍 */
+  border: 1px solid #ffb6c1;
+}
+
+.admin-section h2 {
+  color: #333;
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  cursor: pointer; /* 클릭 가능 표시 */
+  display: flex;
+  justify-content: space-between; /* 제목과 화살표 배치 */
+  align-items: center;
+}
+
+.admin-section h2:hover {
+  color: #007bff; /* 호버 시 파란색 */
+}
+
+/* 접기/펴기 애니메이션 */
+.content {
+  transition: max-height 0.3s ease-in-out; /* 부드러운 높이 변화 */
+  max-height: 1000px; /* 펼쳤을 때 최대 높이 */
+}
+
+.content.collapsed {
+  max-height: 0; /* 접혔을 때 높이 0 */
+}
+
+/* 로그인 페이지 컨테이너 */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* 화면 전체 높이 */
+  background-color: #f4f7fa; /* 연한 회색 배경 */
+}
+
+/* 로그인 박스 */
+.login-box {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.login-box h1 {
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* 입력 필드 그룹 */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+  border-color: #007bff; /* 포커스 시 파란 테두리 */
+  outline: none;
+}
+
+/* 로그인 버튼 */
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.login-btn:hover {
+  background-color: #0056b3;
+}
+
+/* 로그아웃 버튼 */
+.logout-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #dc3545; /* 빨간색 */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}
+
+/* 환영 메시지 */
+.welcome-text {
+  font-size: 1.2rem;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+/* 대시보드 버튼 그룹 */
+.dashboard-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-buttons button {
+  padding: 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.dashboard-buttons button:hover {
+  background-color: #0056b3;
+}
+
+/* 뒤로 가기 버튼 */
+.back-btn {
+  width: 100%;
+  max-width: 200px;
+  padding: 10px;
+  background-color: #6c757d; /* 회색 */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 20px auto;
+  display: block;
+  transition: background-color 0.3s;
+}
+
+.back-btn:hover {
+  background-color: #5a6268;
+}
+
+/* 모바일 반응형 디자인 */
+@media (max-width: 600px) {
+  .App {
+    padding: 10px;
   }
-  to {
-    transform: rotate(360deg);
+
+  .admin-section {
+    padding: 10px;
+    margin: 10px;
+    max-width: 100%;
+  }
+
+  .content {
+    max-height: 800px; /* 모바일에서 최대 높이 조정 */
+  }
+
+  .post-card {
+    padding: 15px;
+    margin: 5px 0;
+  }
+
+  .post-list {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .admin-form div, .post-card form div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .admin-form label, .post-card form label {
+    text-align: left;
+    min-width: auto;
+    margin-right: 0;
+  }
+
+  .admin-form input, .admin-form select, .post-card input, .post-card select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .admin-section h2 {
+    font-size: 1.2rem;
+  }
+
+  button {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .login-box {
+    padding: 20px;
+    margin: 10px;
+  }
+
+  .login-box h1 {
+    font-size: 1.5rem;
+  }
+
+  .input-group input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .login-btn, .logout-btn, .dashboard-buttons button {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .dashboard-buttons {
+    gap: 8px;
+  }
+
+  .back-btn {
+    padding: 8px;
+    font-size: 14px;
+    max-width: 150px;
+  }
+}
+/* 마감 라벨 */
+.closed-label {
+  color: #dc3545; /* 빨간색으로 마감 표시 */
+  font-size: 0.9rem;
+  margin-left: 5px;
+}
+
+/* 제출 버튼 (Volunteer에서 사용) */
+.submit-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+/* 마감 버튼 */
+.closed-btn {
+  padding: 10px 20px;
+  background-color: #6c757d; /* 회색으로 비활성화 느낌 */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: not-allowed; /* 클릭 불가 표시 */
+}
+
+/* 모바일 반응형 조정 */
+@media (max-width: 600px) {
+  .closed-label {
+    font-size: 0.8rem;
+  }
+
+  .submit-btn, .closed-btn {
+    padding: 8px;
+    font-size: 12px;
   }
 }
