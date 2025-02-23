@@ -5,7 +5,6 @@ import 'react-calendar/dist/Calendar.css';
 import './App.css';
 import { db, auth } from './firebase';
 import { collection, query, orderBy, addDoc, deleteDoc, doc, updateDoc, increment, onSnapshot } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { parseFirestoreDate, formatDate, getDayOfWeek } from './utils/dateUtils';
 
@@ -448,59 +447,62 @@ function AdminLogin({ onLogin }) {
 
 function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
   const [events, setEvents] = useState([]);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    date: new Date(),
-    type: 'houseVisit',
-    people: 0,
-    repeat: 'none',
-  });
+  const [newEvent, setNewEvent] = useState({ title: '', date: new Date(), type: 'houseVisit', people: 0, repeat: 'none' });
   const [editingEvent, setEditingEvent] = useState(null);
   const [inquiries, setInquiries] = useState([]);
+  const [volunteers, setVolunteers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [newTeam, setNewTeam] = useState({ name: '', area: '', volunteers: [], type: 'houseVisit' });
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showEventList, setShowEventList] = useState(false);
   const [showInquiryList, setShowInquiryList] = useState(false);
+  const [showTeamManagement, setShowTeamManagement] = useState(false);
 
   useEffect(() => {
+    // 이벤트 데이터 가져오기
     const eventsQuery = query(collection(db, "events"), orderBy("date"));
     const unsubscribeEvents = onSnapshot(eventsQuery, (querySnapshot) => {
-      const eventsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const eventsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const sortedEvents = eventsData.sort((a, b) => {
         const order = { houseVisit: 1, publicEvidence: 2, various: 3 };
         return order[a.type] - order[b.type];
       });
       setEvents(sortedEvents);
-    }, (error) => {
-      console.error("events 실시간 업데이트 에러:", error);
-    });
+    }, (error) => console.error("events 실시간 업데이트 에러:", error));
 
+    // 문의 데이터 가져오기
     const inquiriesQuery = query(collection(db, "inquiries"), orderBy("timestamp", "desc"));
     const unsubscribeInquiries = onSnapshot(inquiriesQuery, (querySnapshot) => {
-      const inquiriesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const inquiriesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setInquiries(inquiriesData);
-    }, (error) => {
-      console.error("inquiries 실시간 업데이트 에러:", error);
-    });
+    }, (error) => console.error("inquiries 실시간 업데이트 에러:", error));
+
+    // 봉사자 데이터 가져오기
+    const volunteersQuery = query(collection(db, "volunteers"), orderBy("timestamp"));
+    const unsubscribeVolunteers = onSnapshot(volunteersQuery, (snapshot) => {
+      setVolunteers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.error("봉사자 데이터 가져오기 오류:", error));
+
+    // 팀 데이터 가져오기
+    const teamsQuery = query(collection(db, "teams"));
+    const unsubscribeTeams = onSnapshot(teamsQuery, (snapshot) => {
+      setTeams(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => console.error("팀 데이터 가져오기 오류:", error));
 
     return () => {
       unsubscribeEvents();
       unsubscribeInquiries();
+      unsubscribeVolunteers();
+      unsubscribeTeams();
     };
   }, []);
 
+  // 새 이벤트 추가
   const handleAddEvent = async (e) => {
     e.preventDefault();
     try {
       const eventDate = parseFirestoreDate(newEvent.date);
-      if (!eventDate || isNaN(eventDate.getTime())) {
-        throw new Error("잘못된 날짜 형식입니다.");
-      }
+      if (!eventDate || isNaN(eventDate.getTime())) throw new Error("잘못된 날짜 형식입니다.");
       const docRef = await addDoc(collection(db, "events"), {
         title: newEvent.title,
         date: eventDate.toISOString(),
@@ -516,6 +518,7 @@ function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
     }
   };
 
+  // 이벤트 수정 시작
   const handleEditEvent = (event) => {
     setEditingEvent(event);
     setNewEvent({
@@ -527,13 +530,12 @@ function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
     });
   };
 
+  // 이벤트 업데이트
   const handleUpdateEvent = async (e) => {
     e.preventDefault();
     try {
       const eventDate = parseFirestoreDate(newEvent.date);
-      if (!eventDate || isNaN(eventDate.getTime())) {
-        throw new Error("잘못된 날짜 형식입니다.");
-      }
+      if (!eventDate || isNaN(eventDate.getTime())) throw new Error("잘못된 날짜 형식입니다.");
       await updateDoc(doc(db, "events", editingEvent.id), {
         title: newEvent.title,
         date: eventDate.toISOString(),
@@ -549,6 +551,7 @@ function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
     }
   };
 
+  // 이벤트 삭제
   const handleDeleteEvent = async (eventId) => {
     try {
       await deleteDoc(doc(db, "events", eventId));
@@ -558,6 +561,7 @@ function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
     }
   };
 
+  // 문의 답변
   const handleAnswerInquiry = async (inquiryId, answer) => {
     try {
       const inquiryRef = doc(db, "inquiries", inquiryId);
@@ -573,50 +577,291 @@ function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
     }
   };
 
+  // 새 팀 추가
+  const handleAddTeam = async (e) => {
+    e.preventDefault();
+    try {
+      const teamData = {
+        name: newTeam.name,
+        area: newTeam.area,
+        volunteers: newTeam.volunteers,
+        type: newTeam.type,
+        vehicleSupportCount: newTeam.volunteers.filter(v => v.vehicleSupport === "yes").length,
+      };
+      await addDoc(collection(db, "teams"), teamData);
+      setNewTeam({ name: '', area: '', volunteers: [], type: 'houseVisit' });
+    } catch (error) {
+      console.error("팀 추가 오류:", error);
+    }
+  };
+
+  // 팀 수정
+  const handleUpdateTeam = async (teamId, updatedData) => {
+    try {
+      await updateDoc(doc(db, "teams", teamId), updatedData);
+    } catch (error) {
+      console.error("팀 수정 오류:", error);
+    }
+  };
+
+  // 팀 삭제
+  const handleDeleteTeam = async (teamId) => {
+    try {
+      await deleteDoc(doc(db, "teams", teamId));
+    } catch (error) {
+      console.error("팀 삭제 오류:", error);
+    }
+  };
+
+  // 팀원 제외
+  const handleRemoveVolunteer = async (teamId, volunteerId) => {
+    const team = teams.find(t => t.id === teamId);
+    const updatedVolunteers = team.volunteers.filter(v => v.id !== volunteerId);
+    const updatedData = {
+      volunteers: updatedVolunteers,
+      vehicleSupportCount: updatedVolunteers.filter(v => v.vehicleSupport === "yes").length,
+    };
+    await handleUpdateTeam(teamId, updatedData);
+  };
+
+  // 팀원 이동
+  const handleMoveVolunteer = async (fromTeamId, toTeamId, volunteerId) => {
+    const fromTeam = teams.find(t => t.id === fromTeamId);
+    const toTeam = teams.find(t => t.id === toTeamId);
+    const volunteer = fromTeam.volunteers.find(v => v.id === volunteerId);
+    const updatedFromVolunteers = fromTeam.volunteers.filter(v => v.id !== volunteerId);
+    const updatedToVolunteers = [...toTeam.volunteers, volunteer];
+
+    await handleUpdateTeam(fromTeamId, {
+      volunteers: updatedFromVolunteers,
+      vehicleSupportCount: updatedFromVolunteers.filter(v => v.vehicleSupport === "yes").length,
+    });
+    await handleUpdateTeam(toTeamId, {
+      volunteers: updatedToVolunteers,
+      vehicleSupportCount: updatedToVolunteers.filter(v => v.vehicleSupport === "yes").length,
+    });
+  };
+
+  // 로그아웃 함수 추가!!!
   const handleLogout = () => {
     signOut(auth).then(() => {
       setIsLoggedIn(false);
       console.log("로그아웃 성공");
-    }).catch((error) => {
-      console.error("로그아웃 실패:", error);
-    });
+    }).catch((error) => console.error("로그아웃 실패:", error));
   };
 
   if (!isLoggedIn) return <Navigate to="/admin/login" replace />;
 
-    return (
-      <div className="App">
-        <h1>관리자 대시보드</h1>
-        <button onClick={handleLogout}>로그아웃</button>
-  
-        <div className="admin-section admin-add-event">
-          <h2 onClick={() => setShowAddEvent(!showAddEvent)}>
-            새 공고 추가 {showAddEvent ? "▼" : "▶"}
-          </h2>
-          <div className={`content ${showAddEvent ? 'expanded' : 'collapsed'}`}>
-            {showAddEvent && (
-              <form onSubmit={handleAddEvent} className="admin-form">
+  // 봉사 형태별 봉사자 분리
+  const volunteerTypes = {
+    houseVisit: volunteers.filter(v => v.eventId && events.find(e => e.id === v.eventId)?.type === "houseVisit"),
+    publicEvidence: volunteers.filter(v => v.eventId && events.find(e => e.id === v.eventId)?.type === "publicEvidence"),
+    various: volunteers.filter(v => v.eventId && events.find(e => e.id === v.eventId)?.type === "various"),
+  };
+
+  // 봉사 형태별 팀 분리
+  const teamTypes = {
+    houseVisit: teams.filter(t => t.type === "houseVisit"),
+    publicEvidence: teams.filter(t => t.type === "publicEvidence"),
+    various: teams.filter(t => t.type === "various"),
+  };
+
+  return (
+    <div className="App">
+      <h1>관리자 대시보드</h1>
+      <button onClick={handleLogout}>로그아웃</button>
+
+      {/* 새 공고 추가 섹션 */}
+      <div className="admin-section admin-add-event">
+        <h2 onClick={() => setShowAddEvent(!showAddEvent)}>
+          새 공고 추가 {showAddEvent ? "▼" : "▶"}
+        </h2>
+        <div className={`content ${showAddEvent ? 'expanded' : 'collapsed'}`}>
+          {showAddEvent && (
+            <form onSubmit={handleAddEvent} className="admin-form">
+              <div>
+                <label>제목: </label>
+                <input
+                  type="text"
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label>날짜: </label>
+                <input
+                  type="date"
+                  value={newEvent.date.toISOString().split('T')[0]}
+                  onChange={(e) => setNewEvent({ ...newEvent, date: new Date(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label>형태: </label>
+                <select
+                  value={newEvent.type}
+                  onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
+                >
+                  <option value="houseVisit">호별 방문</option>
+                  <option value="publicEvidence">공개 증거(전시대)</option>
+                  <option value="various">다양한 형태의 봉사</option>
+                </select>
+              </div>
+              <div>
+                <label>인원: </label>
+                <input
+                  type="number"
+                  value={newEvent.people}
+                  onChange={(e) => setNewEvent({ ...newEvent, people: e.target.value })}
+                />
+              </div>
+              <div>
+                <label>반복: </label>
+                <select
+                  value={newEvent.repeat}
+                  onChange={(e) => setNewEvent({ ...newEvent, repeat: e.target.value })}
+                >
+                  <option value="none">없음</option>
+                  <option value="weekly">매주</option>
+                </select>
+              </div>
+              <button type="submit">추가</button>
+            </form>
+          )}
+        </div>
+      </div>
+
+      {/* 기존 공고 목록 섹션 */}
+      <div className="admin-section admin-event-list">
+        <h2 onClick={() => setShowEventList(!showEventList)}>
+          기존 공고 목록 {showEventList ? "▼" : "▶"}
+        </h2>
+        <div className={`content ${showEventList ? 'expanded' : 'collapsed'}`}>
+          {showEventList && (
+            <div>
+              {events.map(event => {
+                const eventDate = parseFirestoreDate(event.date);
+                const isClosed = event.currentPeople >= event.people;
+                return (
+                  <div key={event.id} className="post-card" style={{ margin: '10px 0' }}>
+                    <h3>{event.title} {isClosed && <span className="closed-label">(마감)</span>}</h3>
+                    <p>날짜: {formatDate(eventDate)}</p>
+                    <p>형태: {event.type === "houseVisit" ? "호별 방문" : event.type === "publicEvidence" ? "공개 증거(전시대)" : "다양한 형태의 봉사"}</p>
+                    <p>인원: {event.currentPeople}/{event.people}명</p>
+                    <p>반복: {event.repeat || "없음"}</p>
+                    {editingEvent?.id === event.id ? (
+                      <form onSubmit={handleUpdateEvent}>
+                        <input
+                          type="text"
+                          value={newEvent.title}
+                          onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                        />
+                        <input
+                          type="date"
+                          value={newEvent.date.toISOString().split('T')[0]}
+                          onChange={(e) => setNewEvent({ ...newEvent, date: new Date(e.target.value) })}
+                        />
+                        <select
+                          value={newEvent.type}
+                          onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
+                        >
+                          <option value="houseVisit">호별 방문</option>
+                          <option value="publicEvidence">공개 증거(전시대)</option>
+                          <option value="various">다양한 형태의 봉사</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={newEvent.people}
+                          onChange={(e) => setNewEvent({ ...newEvent, people: e.target.value })}
+                        />
+                        <select
+                          value={newEvent.repeat}
+                          onChange={(e) => setNewEvent({ ...newEvent, repeat: e.target.value })}
+                        >
+                          <option value="none">없음</option>
+                          <option value="weekly">매주</option>
+                        </select>
+                        <button type="submit">업데이트</button>
+                        <button onClick={() => setEditingEvent(null)}>취소</button>
+                      </form>
+                    ) : (
+                      <>
+                        <button className="edit-btn" onClick={() => handleEditEvent(event)}>수정</button>
+                        <button className="delete-btn" onClick={() => handleDeleteEvent(event.id)}>삭제</button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 문의 목록 섹션 */}
+      <div className="admin-section admin-inquiry-list">
+        <h2 onClick={() => setShowInquiryList(!showInquiryList)}>
+          문의 목록 {showInquiryList ? "▼" : "▶"}
+        </h2>
+        <div className={`content ${showInquiryList ? 'expanded' : 'collapsed'}`}>
+          {showInquiryList && (
+            <div>
+              {inquiries.map(inquiry => (
+                <div key={inquiry.id} className="post-card" style={{ margin: '10px 0' }}>
+                  <p><strong>이름:</strong> {inquiry.userName}</p>
+                  <p><strong>문의 내용:</strong> {inquiry.question}</p>
+                  <p><strong>시간:</strong> {new Date(inquiry.timestamp).toLocaleString('ko-KR')}</p>
+                  {inquiry.answer ? (
+                    <p><strong>답변:</strong> {inquiry.answer} (by {inquiry.answeredBy})</p>
+                  ) : (
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="답변 입력"
+                        onChange={(e) => handleAnswerInquiry(inquiry.id, e.target.value)}
+                      />
+                      <button onClick={() => handleAnswerInquiry(inquiry.id, prompt("답변을 입력하세요"))}>답변 제출</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 팀 관리 섹션 */}
+      <div className="admin-section admin-team-management">
+        <h2 onClick={() => setShowTeamManagement(!showTeamManagement)}>
+          팀 관리 {showTeamManagement ? "▼" : "▶"}
+        </h2>
+        <div className={`content ${showTeamManagement ? 'expanded' : 'collapsed'}`}>
+          {showTeamManagement && (
+            <>
+              <h3>새 팀 추가</h3>
+              <form onSubmit={handleAddTeam} className="admin-form">
                 <div>
-                  <label>제목: </label>
+                  <label>팀 이름: </label>
                   <input
                     type="text"
-                    value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                    value={newTeam.name}
+                    onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                    placeholder="팀 이름 입력"
                   />
                 </div>
                 <div>
-                  <label>날짜: </label>
+                  <label>구역: </label>
                   <input
-                    type="date"
-                    value={newEvent.date.toISOString().split('T')[0]}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: new Date(e.target.value) })}
+                    type="text"
+                    value={newTeam.area}
+                    onChange={(e) => setNewTeam({ ...newTeam, area: e.target.value })}
+                    placeholder="구역 입력"
                   />
                 </div>
                 <div>
-                  <label>형태: </label>
+                  <label>봉사 형태: </label>
                   <select
-                    value={newEvent.type}
-                    onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
+                    value={newTeam.type}
+                    onChange={(e) => setNewTeam({ ...newTeam, type: e.target.value })}
                   >
                     <option value="houseVisit">호별 방문</option>
                     <option value="publicEvidence">공개 증거(전시대)</option>
@@ -624,142 +869,261 @@ function AdminDashboard({ isLoggedIn, setIsLoggedIn }) {
                   </select>
                 </div>
                 <div>
-                  <label>인원: </label>
-                  <input
-                    type="number"
-                    value={newEvent.people}
-                    onChange={(e) => setNewEvent({ ...newEvent, people: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label>반복: </label>
-                  <select
-                    value={newEvent.repeat}
-                    onChange={(e) => setNewEvent({ ...newEvent, repeat: e.target.value })}
-                  >
-                    <option value="none">없음</option>
-                    <option value="weekly">매주</option>
-                  </select>
-                </div>
-                <button type="submit">추가</button>
-              </form>
-            )}
-          </div>
-        </div>
-  
-        <div className="admin-section admin-event-list">
-          <h2 onClick={() => setShowEventList(!showEventList)}>
-            기존 공고 목록 {showEventList ? "▼" : "▶"}
-          </h2>
-          <div className={`content ${showEventList ? 'expanded' : 'collapsed'}`}>
-            {showEventList && (
-              <div>
-                {events.map(event => {
-                  const eventDate = parseFirestoreDate(event.date);
-                  const isClosed = event.currentPeople >= event.people; // 마감 여부 체크
-                  return (
-                    <div key={event.id} className="post-card" style={{ margin: '10px 0' }}>
-                      <h3>{event.title} {isClosed && <span className="closed-label">(마감)</span>}</h3>
-                      <p>날짜: {formatDate(eventDate)}</p>
-                      <p>형태: {event.type === "houseVisit" ? "호별 방문" : event.type === "publicEvidence" ? "공개 증거(전시대)" : "다양한 형태의 봉사"}</p>
-                      <p>인원: {event.currentPeople}/{event.people}명</p> {/* 현재/최대 인원 표시 */}
-                      <p>반복: {event.repeat || "없음"}</p>
-                      {editingEvent?.id === event.id ? (
-                        <form onSubmit={(e) => {
-                          e.preventDefault();
-                          handleUpdateEvent(e);
-                        }}>
-                          <input
-                            type="text"
-                            value={newEvent.title}
-                            onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                          />
-                          <input
-                            type="date"
-                            value={newEvent.date.toISOString().split('T')[0]}
-                            onChange={(e) => setNewEvent({ ...newEvent, date: new Date(e.target.value) })}
-                          />
-                          <select
-                            value={newEvent.type}
-                            onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
-                          >
-                            <option value="houseVisit">호별 방문</option>
-                            <option value="publicEvidence">공개 증거(전시대)</option>
-                            <option value="various">다양한 형태의 봉사</option>
-                          </select>
-                          <input
-                            type="number"
-                            value={newEvent.people}
-                            onChange={(e) => setNewEvent({ ...newEvent, people: e.target.value })}
-                          />
-                          <select
-                            value={newEvent.repeat}
-                            onChange={(e) => setNewEvent({ ...newEvent, repeat: e.target.value })}
-                          >
-                            <option value="none">없음</option>
-                            <option value="weekly">매주</option>
-                          </select>
-                          <button type="submit">업데이트</button>
-                          <button onClick={() => setEditingEvent(null)}>취소</button>
-                        </form>
-                      ) : (
-                        <>
-                          <button onClick={() => handleEditEvent(event)}>수정</button>
-                          <button onClick={() => handleDeleteEvent(event.id)}>삭제</button>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-  
-        <div className="admin-section admin-inquiry-list">
-          <h2 onClick={() => setShowInquiryList(!showInquiryList)}>
-            문의 목록 {showInquiryList ? "▼" : "▶"}
-          </h2>
-          <div className={`content ${showInquiryList ? 'expanded' : 'collapsed'}`}>
-            {showInquiryList && (
-              <div>
-                {inquiries.map(inquiry => (
-                  <div key={inquiry.id} className="post-card" style={{ margin: '10px 0' }}>
-                    <p><strong>이름:</strong> {inquiry.userName}</p>
-                    <p><strong>문의 내용:</strong> {inquiry.question}</p>
-                    <p><strong>시간:</strong> {new Date(inquiry.timestamp).toLocaleString('ko-KR')}</p>
-                    {inquiry.answer ? (
-                      <p><strong>답변:</strong> {inquiry.answer} (by {inquiry.answeredBy})</p>
-                    ) : (
-                      <div>
+                  <label>봉사자 선택: </label>
+                  <div className="checkbox-list">
+                    {volunteerTypes[newTeam.type].map(volunteer => (
+                      <label key={volunteer.id} className="checkbox-item">
                         <input
-                          type="text"
-                          placeholder="답변 입력"
-                          onChange={(e) => handleAnswerInquiry(inquiry.id, e.target.value)}
+                          type="checkbox"
+                          checked={newTeam.volunteers.some(v => v.id === volunteer.id)}
+                          onChange={(e) => {
+                            const updatedVolunteers = e.target.checked
+                              ? [...newTeam.volunteers, volunteer]
+                              : newTeam.volunteers.filter(v => v.id !== volunteer.id);
+                            setNewTeam({ ...newTeam, volunteers: updatedVolunteers });
+                          }}
                         />
-                        <button onClick={() => handleAnswerInquiry(inquiry.id, prompt("답변을 입력하세요"))}>답변 제출</button>
-                      </div>
-                    )}
+                        {volunteer.name} {volunteer.vehicleSupport === "yes" ? "(차량)" : ""}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <button type="submit">팀 추가</button>
+              </form>
+
+              <h3>호별 방문 팀</h3>
+              <div className="team-list">
+                {teamTypes.houseVisit.map(team => (
+                  <div key={team.id} className="team-card">
+                    <h3>{team.name}</h3>
+                    <span className="team-area">구역: 
+                      <input
+                        type="text"
+                        value={team.area || ''}
+                        onChange={(e) => {
+                          const updatedTeams = teams.map(t =>
+                            t.id === team.id ? { ...t, area: e.target.value } : t
+                          );
+                          setTeams(updatedTeams);
+                        }}
+                        onBlur={() => handleUpdateTeam(team.id, { area: team.area })}
+                        placeholder="구역 입력"
+                      />
+                    </span>
+                    <div className="team-volunteers">
+                      {team.volunteers.map(volunteer => (
+                        <span key={volunteer.id} className="volunteer-name">
+                          {volunteer.name}
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value === "remove") {
+                                handleRemoveVolunteer(team.id, volunteer.id);
+                              } else if (e.target.value) {
+                                handleMoveVolunteer(team.id, e.target.value, volunteer.id);
+                              }
+                            }}
+                          >
+                            <option value="">동작 선택</option>
+                            <option value="remove">제외</option>
+                            {teams.filter(t => t.id !== team.id).map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </span>
+                      ))}
+                    </div>
+                    <p>차량 지원: {team.vehicleSupportCount || 0}명</p>
+                    <button className="delete-btn" onClick={() => handleDeleteTeam(team.id)}>팀 삭제</button>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
-        <button className="back-btn" onClick={() => window.history.back()}>뒤로 가기</button>
-      </div>
-    );
-  }
 
-function TeamStatus() {
-  return (
-    <div className="App">
-      <h1>봉사팀 현황</h1>
-      <p>아직 구현되지 않았습니다. 나중에 봉사자 데이터를 여기에 표시할게요!</p>
-      <button onClick={() => window.history.back()}>뒤로 가기</button>
+              <h3>공개 증거(전시대) 팀</h3>
+              <div className="team-list">
+                {teamTypes.publicEvidence.map(team => (
+                  <div key={team.id} className="team-card">
+                    <h3>{team.name}</h3>
+                    <span className="team-area">구역: 
+                      <input
+                        type="text"
+                        value={team.area || ''}
+                        onChange={(e) => {
+                          const updatedTeams = teams.map(t =>
+                            t.id === team.id ? { ...t, area: e.target.value } : t
+                          );
+                          setTeams(updatedTeams);
+                        }}
+                        onBlur={() => handleUpdateTeam(team.id, { area: team.area })}
+                        placeholder="구역 입력"
+                      />
+                    </span>
+                    <div className="team-volunteers">
+                      {team.volunteers.map(volunteer => (
+                        <span key={volunteer.id} className="volunteer-name">
+                          {volunteer.name}
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value === "remove") {
+                                handleRemoveVolunteer(team.id, volunteer.id);
+                              } else if (e.target.value) {
+                                handleMoveVolunteer(team.id, e.target.value, volunteer.id);
+                              }
+                            }}
+                          >
+                            <option value="">동작 선택</option>
+                            <option value="remove">제외</option>
+                            {teams.filter(t => t.id !== team.id).map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </span>
+                      ))}
+                    </div>
+                    <p>차량 지원: {team.vehicleSupportCount || 0}명</p>
+                    <button className="delete-btn" onClick={() => handleDeleteTeam(team.id)}>팀 삭제</button>
+                  </div>
+                ))}
+              </div>
+
+              <h3>다양한 형태의 봉사 팀</h3>
+              <div className="team-list">
+                {teamTypes.various.map(team => (
+                  <div key={team.id} className="team-card">
+                    <h3>{team.name}</h3>
+                    <span className="team-area">구역: 
+                      <input
+                        type="text"
+                        value={team.area || ''}
+                        onChange={(e) => {
+                          const updatedTeams = teams.map(t =>
+                            t.id === team.id ? { ...t, area: e.target.value } : t
+                          );
+                          setTeams(updatedTeams);
+                        }}
+                        onBlur={() => handleUpdateTeam(team.id, { area: team.area })}
+                        placeholder="구역 입력"
+                      />
+                    </span>
+                    <div className="team-volunteers">
+                      {team.volunteers.map(volunteer => (
+                        <span key={volunteer.id} className="volunteer-name">
+                          {volunteer.name}
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value === "remove") {
+                                handleRemoveVolunteer(team.id, volunteer.id);
+                              } else if (e.target.value) {
+                                handleMoveVolunteer(team.id, e.target.value, volunteer.id);
+                              }
+                            }}
+                          >
+                            <option value="">동작 선택</option>
+                            <option value="remove">제외</option>
+                            {teams.filter(t => t.id !== team.id).map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </span>
+                      ))}
+                    </div>
+                    <p>차량 지원: {team.vehicleSupportCount || 0}명</p>
+                    <button className="delete-btn" onClick={() => handleDeleteTeam(team.id)}>팀 삭제</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <button className="back-btn" onClick={() => window.history.back()}>뒤로 가기</button>
     </div>
   );
 }
+function TeamStatus() {
+    const [volunteers, setVolunteers] = useState([]);
+    const [teams, setTeams] = useState([]);
+    const navigate = useNavigate();
+  
+    useEffect(() => {
+      // 봉사자 데이터 가져오기
+      const volunteersQuery = query(collection(db, "volunteers"), orderBy("timestamp"));
+      const unsubscribeVolunteers = onSnapshot(volunteersQuery, (snapshot) => {
+        const volunteerData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setVolunteers(volunteerData);
+      }, (error) => {
+        console.error("봉사자 데이터 가져오기 오류:", error);
+      });
+  
+      // 팀 데이터 가져오기 (없으면 빈 배열)
+      const teamsQuery = query(collection(db, "teams"));
+      const unsubscribeTeams = onSnapshot(teamsQuery, (snapshot) => {
+        const teamData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setTeams(teamData);
+      }, (error) => {
+        console.error("팀 데이터 가져오기 오류:", error);
+      });
+  
+      return () => {
+        unsubscribeVolunteers();
+        unsubscribeTeams();
+      };
+    }, []);
+  
+    return (
+      <div className="App">
+        <h1>봉사팀 현황</h1>
+        <div className="team-status">
+          <h2>봉사자 목록</h2>
+          {volunteers.length === 0 ? (
+            <p>아직 신청한 봉사자가 없습니다.</p>
+          ) : (
+            <ul className="volunteer-list">
+              {volunteers.map(volunteer => (
+                <li key={volunteer.id} className="volunteer-item">
+                  <span>{volunteer.name}</span>
+                  <span>차량 지원: {volunteer.vehicleSupport === "yes" ? "예" : "아니오"}</span>
+                  <span>이벤트 ID: {volunteer.eventId}</span>
+                  <span>신청 날짜: {formatDate(volunteer.volunteerDate)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+  
+          <h2>팀 목록</h2>
+          {teams.length === 0 ? (
+            <p>아직 팀이 구성되지 않았습니다.</p>
+          ) : (
+            <div className="team-list">
+              {teams.map(team => (
+                <div key={team.id} className="team-card">
+                  <h3>{team.name}</h3>
+                  <p>구역: {team.area || "미정"}</p>
+                  <p>차량 지원: {team.vehicleSupportCount || 0}명</p>
+                  <p>팀원: {team.volunteers ? team.volunteers.length : 0}명</p>
+                  <ul>
+                    {team.volunteers && team.volunteers.map(v => (
+                      <li key={v.id}>{v.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button className="back-btn" onClick={() => navigate('/')}>뒤로 가기</button>
+      </div>
+    );
+  }
 
 function App() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);

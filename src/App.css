@@ -401,3 +401,109 @@
     font-size: 12px;
   }
 }
+
+.team-status, .admin-team-management {
+  margin-top: 20px;
+}
+
+.volunteer-list, .team-list {
+  list-style: none;
+  padding: 0;
+}
+
+.volunteer-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  gap: 20px;
+}
+
+.team-card {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background-color: #fff;
+}
+
+.admin-form select[multiple] {
+  height: 100px; /* 다중 선택 가능하게 */
+  width: 100%;
+}
+
+.checkbox-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.checkbox-item {
+  display: block;
+  margin: 5px 0;
+}
+
+.team-volunteer-list {
+  list-style: none;
+  padding: 0;
+}
+
+.team-volunteer-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.team-volunteer-list select {
+  padding: 5px;
+  font-size: 12px;
+}
+
+.team-card {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background-color: #fff;
+}
+
+.team-card h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.2rem;
+  display: inline-block;
+}
+
+.team-area {
+  margin-left: 10px;
+  display: inline-block;
+}
+
+.team-area input {
+  padding: 5px;
+  font-size: 14px;
+  width: 100px;
+}
+
+.team-volunteers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 10px 0;
+}
+
+.volunteer-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.team-volunteers select {
+  padding: 3px;
+  font-size: 12px;
+}
+
+.team-card p {
+  margin: 5px 0 0 0;
+}
